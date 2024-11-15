@@ -23,6 +23,7 @@ const HomeScreen = () => {
             <Text style={styles.texto}>Descripción: {item.descripcion}</Text>
             <Text style={styles.texto}>Estado: {item.estado}</Text>
             <Text style={styles.texto}>Categoría: {item.categoria}</Text>
+            <Text style={styles.texto}>N Serie: {item.numeroSerie}</Text>
         </View>
     );
 

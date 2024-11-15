@@ -148,7 +148,7 @@ const EquiposCRUD = () => {
         title={editingId ? "Actualizar Equipo" : "Agregar Equipo"}
         onPress={handleSaveEquipo}
       />
-     
+    
     </View>
   );
 };
