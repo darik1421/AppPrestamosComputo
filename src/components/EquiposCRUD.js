@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Button, TextInput, Image, Alert, StyleSheet } from 'react-native';
-import { collection, addDoc, doc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore"; 
+import { collection, addDoc, doc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { db } from '../../connection/firebaseConfig';
+import * as ImagePicker from 'expo-image-picker';
 
 const EquiposCRUD = () => {
   const [equipos, setEquipos] = useState([]);
@@ -100,6 +101,40 @@ const EquiposCRUD = () => {
     }
   };
 
+  const pickImage = async (useCamera = false) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Se requieren permisos para acceder a la galería.');
+        return;
+    }
+
+    let result;
+    if (useCamera) {
+        const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+        if (cameraStatus.status !== 'granted') {
+            Alert.alert('Permiso denegado', 'Se requieren permisos de cámara.');
+            return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+    } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+    }
+
+    if (!result.canceled) {
+        setImagen(result.assets[0].uri);
+    }
+  };
+
   const renderItem = ({ item }) => (
     <View style={styles.itemContainer}>
       <Text>Modelo: {item.modelo}</Text>
@@ -144,11 +179,20 @@ const EquiposCRUD = () => {
         value={categoria}
         onChangeText={setCategoria}
       />
+      <View style={styles.imageContainer}>
+        {imagen ? (
+            <Image source={{ uri: imagen }} style={styles.previewImage} />
+        ) : null}
+        <View style={styles.imageButtons}>
+            <Button title="Seleccionar Imagen" onPress={() => pickImage(false)} />
+            <Button title="Tomar Foto" onPress={() => pickImage(true)} />
+        </View>
+      </View>
       <Button
-        title={editingId ? "Actualizar Equipo" : "Agregar Equipo"}
+        title={"Agregar Equipo"}
         onPress={handleSaveEquipo}
       />
-    
+
     </View>
   );
 };
@@ -171,6 +215,22 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
+  },
+  imageContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 10,
+    borderRadius: 10,
+  },
+  imageButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 10,
   },
 });
 
