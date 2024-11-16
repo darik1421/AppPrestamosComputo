@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Modal, TouchableOpacity, Image } from 'react-native';
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from '../../connection/firebaseConfig';
 
 const HomeScreen = () => {
     const [equipos, setEquipos] = useState([]);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedEquipo, setSelectedEquipo] = useState(null);
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'Equipos'), (snapshot) => {
@@ -18,13 +20,18 @@ const HomeScreen = () => {
     }, []);
 
     const renderItem = ({ item }) => (
-        <View style={styles.cardContainer}>
+        <TouchableOpacity 
+            style={styles.cardContainer}
+            onPress={() => {
+                setSelectedEquipo(item);
+                setModalVisible(true);
+            }}
+        >
             <Text style={styles.titulo}>{item.modelo}</Text>
             <Text style={styles.texto}>Descripción: {item.descripcion}</Text>
             <Text style={styles.texto}>Estado: {item.estado}</Text>
             <Text style={styles.texto}>Categoría: {item.categoria}</Text>
-            <Text style={styles.texto}>N Serie: {item.numeroSerie}</Text>
-        </View>
+        </TouchableOpacity>
     );
 
     return (
@@ -37,6 +44,38 @@ const HomeScreen = () => {
                 numColumns={2}
                 contentContainerStyle={styles.listContainer}
             />
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.centeredView}>
+                    <View style={styles.modalView}>
+                        {selectedEquipo && (
+                            <>
+                                {selectedEquipo.imagen && (
+                                    <Image 
+                                        source={{ uri: selectedEquipo.imagen }} 
+                                        style={styles.modalImage} 
+                                    />
+                                )}
+                                <Text style={styles.modalTitle}>{selectedEquipo.modelo}</Text>
+                                <Text style={styles.modalText}>Descripción: {selectedEquipo.descripcion}</Text>
+                                <Text style={styles.modalText}>Estado: {selectedEquipo.estado}</Text>
+                                <Text style={styles.modalText}>Categoría: {selectedEquipo.categoria}</Text>
+                                <Text style={styles.modalText}>N° Serie: {selectedEquipo.numeroSerie}</Text>
+                            </>
+                        )}
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setModalVisible(false)}
+                        >
+                            <Text style={styles.closeButtonText}>Cerrar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -80,7 +119,54 @@ const styles = StyleSheet.create({
     texto: {
         fontSize: 14,
         marginBottom: 4,
-    }
+    },
+    centeredView: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalView: {
+        width: '80%',
+        backgroundColor: 'white',
+        borderRadius: 20,
+        padding: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5
+    },
+    modalImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 10,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    modalText: {
+        fontSize: 14,
+        marginBottom: 4,
+    },
+    closeButton: {
+        backgroundColor: '#2196F3',
+        padding: 10,
+        borderRadius: 5,
+        marginTop: 10,
+    },
+    closeButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
 });
 
 export default HomeScreen;
