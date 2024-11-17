@@ -2,13 +2,11 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-
 // Importaciones de iconos para usar en la navegación
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-
-// Importaciones de Screens para la navegación
+// Pantallas de la app para la navegación
 import HomeScreen from '../src/components/HomeScreen';
 import Estadisticas from '../src/components/Estadisticas';
 import Equipos from '../src/components/Equipos';
