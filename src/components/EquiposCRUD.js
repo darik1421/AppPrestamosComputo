@@ -1,100 +1,44 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, TextInput, Image, Alert, StyleSheet } from 'react-native';
-import { collection, addDoc, doc, updateDoc, onSnapshot, deleteDoc } from "firebase/firestore";
+import React, { useState } from 'react';
+import { View, Text, TextInput, Image, Alert, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { collection, addDoc } from "firebase/firestore";
 import { db } from '../../connection/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
+import { Camera, Laptop, HardDrive, Activity, Grid, Upload, PlusCircle } from 'lucide-react-native';
 
 const EquiposCRUD = () => {
-  const [equipos, setEquipos] = useState([]);
   const [modelo, setModelo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [numeroSerie, setNumeroSerie] = useState('');
   const [estado, setEstado] = useState('');
   const [imagen, setImagen] = useState('');
   const [categoria, setCategoria] = useState('');
-  const [editingId, setEditingId] = useState(null);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'Equipos'), (snapshot) => {
-      const equiposData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setEquipos(equiposData);
-    });
-    return unsubscribe;
-  }, []);
-
-  const handleEdit = (item) => {
-    setModelo(item.modelo);
-    setDescripcion(item.descripcion);
-    setNumeroSerie(item.numeroSerie);
-    setEstado(item.estado);
-    setCategoria(item.categoria);
-    setEditingId(item.id);
-  };
-
-  const handleDelete = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'Equipos', id));
-    } catch (error) {
-      console.error("Error al eliminar equipo: ", error);
-      Alert.alert("Error", "Hubo un problema al eliminar el equipo.");
-    }
-  };
 
   const handleSaveEquipo = async () => {
-    if (!modelo.trim()) {
-      Alert.alert("Validación", "El modelo del equipo es obligatorio.");
-      return;
-    }
-    if (!descripcion.trim()) {
-      Alert.alert("Validación", "La descripción del equipo es obligatoria.");
-      return;
-    }
-    if (!numeroSerie.trim()) {
-      Alert.alert("Validación", "El número de serie es obligatorio.");
-      return;
-    }
-    if (!estado.trim()) {
-      Alert.alert("Validación", "El estado del equipo es obligatorio.");
-      return;
-    }
-    if (!categoria.trim()) {
-      Alert.alert("Validación", "La categoría del equipo es obligatoria.");
+    if (!modelo.trim() || !descripcion.trim() || !numeroSerie.trim() || !estado.trim() || !categoria.trim()) {
+      Alert.alert("Validación", "Todos los campos son obligatorios.");
       return;
     }
 
+    const categoriaNormalizada = categoria.trim().toLowerCase();
+
     try {
-      if (editingId) {
-        const equipoRef = doc(db, 'Equipos', editingId);
-        await updateDoc(equipoRef, {
-          modelo,
-          descripcion,
-          numeroSerie,
-          estado,
-          imagen,
-          categoria,
-        });
-        setEditingId(null);
-      } else {
-        await addDoc(collection(db, 'Equipos'), {
-          modelo,
-          descripcion,
-          numeroSerie,
-          estado,
-          imagen,
-          categoria,
-          fechaRegistro: new Date(),
-        });
-      }
-      // Limpiar campos
+      await addDoc(collection(db, 'Equipos'), {
+        modelo,
+        descripcion,
+        numeroSerie,
+        estado,
+        imagen,
+        categoria: categoriaNormalizada,
+        fechaRegistro: new Date(),
+      });
+      
       setModelo('');
       setDescripcion('');
       setNumeroSerie('');
       setEstado('');
       setImagen('');
       setCategoria('');
+      Alert.alert("Éxito", "Equipo agregado correctamente");
     } catch (error) {
       console.error("Error al guardar equipo: ", error);
       Alert.alert("Error", "Hubo un problema al guardar el equipo.");
@@ -104,96 +48,118 @@ const EquiposCRUD = () => {
   const pickImage = async (useCamera = false) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Se requieren permisos para acceder a la galería.');
-        return;
+      Alert.alert('Permiso denegado', 'Se requieren permisos para acceder a la galería.');
+      return;
     }
 
     let result;
     if (useCamera) {
-        const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-        if (cameraStatus.status !== 'granted') {
-            Alert.alert('Permiso denegado', 'Se requieren permisos de cámara.');
-            return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-        });
+      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+      if (cameraStatus.status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Se requieren permisos de cámara.');
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
     } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 1,
-        });
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+      });
     }
 
     if (!result.canceled) {
-        setImagen(result.assets[0].uri);
+      setImagen(result.assets[0].uri);
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.itemContainer}>
-      <Text>Modelo: {item.modelo}</Text>
-      <Text>Descripción: {item.descripcion}</Text>
-      <Text>Número de Serie: {item.numeroSerie}</Text>
-      <Text>Estado: {item.estado}</Text>
-      <Text>Categoría: {item.categoria}</Text>
-      <Button title="Editar" onPress={() => handleEdit(item)} />
-      <Button title="Eliminar" onPress={() => handleDelete(item.id)} />
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder="Modelo"
-        value={modelo}
-        onChangeText={setModelo}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Descripción"
-        value={descripcion}
-        onChangeText={setDescripcion}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Número de Serie"
-        value={numeroSerie}
-        onChangeText={setNumeroSerie}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Estado"
-        value={estado}
-        onChangeText={setEstado}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Categoría"
-        value={categoria}
-        onChangeText={setCategoria}
-      />
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Registro de Equipo</Text>
+      
+      <View style={styles.inputContainer}>
+        <Laptop stroke="#4A5568" size={24} />
+        <TextInput
+          style={styles.input}
+          placeholder="Modelo"
+          value={modelo}
+          onChangeText={setModelo}
+        />
+      </View>
+      
+      <View style={styles.inputContainer}>
+        <HardDrive stroke="#4A5568" size={24} />
+        <TextInput
+          style={styles.input}
+          placeholder="Descripción"
+          value={descripcion}
+          onChangeText={setDescripcion}
+          multiline
+        />
+      </View>
+      
+      <View style={styles.inputContainer}>
+        <Grid stroke="#4A5568" size={24} />
+        <TextInput
+          style={styles.input}
+          placeholder="Número de Serie"
+          value={numeroSerie}
+          onChangeText={setNumeroSerie}
+        />
+      </View>
+      
+      <View style={styles.inputContainer}>
+        <Activity stroke="#4A5568" size={24} />
+        <TextInput
+          style={styles.input}
+          placeholder="Estado"
+          value={estado}
+          onChangeText={setEstado}
+        />
+      </View>
+      
+      <View style={styles.inputContainer}>
+        <Grid stroke="#4A5568" size={24} />
+        <TextInput
+          style={styles.input}
+          placeholder="Categoría"
+          value={categoria}
+          onChangeText={setCategoria}
+        />
+      </View>
+      
       <View style={styles.imageContainer}>
         {imagen ? (
-            <Image source={{ uri: imagen }} style={styles.previewImage} />
-        ) : null}
+          <Image source={{ uri: imagen }} style={styles.previewImage} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Upload stroke="#4A5568" size={40} />
+            <Text style={styles.imagePlaceholderText}>Imagen del equipo</Text>
+          </View>
+        )}
         <View style={styles.imageButtons}>
-            <Button title="Seleccionar Imagen" onPress={() => pickImage(false)} />
-            <Button title="Tomar Foto" onPress={() => pickImage(true)} />
+          <TouchableOpacity style={styles.button} onPress={() => pickImage(false)}>
+            <Camera stroke="#FFFFFF" size={24} />
+            <Text style={styles.buttonText}>Galería</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={() => pickImage(true)}>
+            <Camera stroke="#FFFFFF" size={24} />
+            <Text style={styles.buttonText}>Cámara</Text>
+          </TouchableOpacity>
         </View>
       </View>
-      <Button
-        title={"Agregar Equipo"}
-        onPress={handleSaveEquipo}
-      />
-
-    </View>
+      
+      <TouchableOpacity style={styles.submitButton} onPress={handleSaveEquipo}>
+        <PlusCircle stroke="#FFFFFF" size={24} />
+        <Text style={styles.submitButtonText}>Agregar Equipo</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
@@ -201,36 +167,84 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#fff',
-    marginTop: 40,
+    backgroundColor: '#F7FAFC',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginBottom: 15,
+    paddingHorizontal: 10,
+    elevation: 2,
   },
   input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingHorizontal: 10,
-  },
-  itemContainer: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    flex: 1,
+    height: 50,
+    marginLeft: 10,
+    color: '#2D3748',
   },
   imageContainer: {
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 20,
   },
   previewImage: {
     width: 200,
     height: 200,
-    marginBottom: 10,
     borderRadius: 10,
+    marginBottom: 10,
+  },
+  imagePlaceholder: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  imagePlaceholderText: {
+    color: '#4A5568',
+    marginTop: 10,
   },
   imageButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginBottom: 10,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4299E1',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    marginLeft: 10,
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#48BB78',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
   },
 });
 
