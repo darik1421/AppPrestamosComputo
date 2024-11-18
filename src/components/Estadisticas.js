@@ -7,6 +7,7 @@ import { captureRef } from 'react-native-view-shot';
 import { jsPDF } from 'jspdf';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 
 const PALETA_COLORES = [
   '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
@@ -21,6 +22,7 @@ export default function Estadisticas() {
   const [isChartReady, setIsChartReady] = useState(false);
   const [coloresEtiquetas, setColoresEtiquetas] = useState({});
   const chartRef = useRef();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (dataEquipos.datasets[0].data.length > 0) {
@@ -29,42 +31,98 @@ export default function Estadisticas() {
   }, [dataEquipos]);
 
   const generarPDF = async () => {
-    if (!isChartReady) {
-      Alert.alert('Error', 'El gráfico aún no está listo para ser capturado.');
-      return;
-    }
+    if (isGenerating) return;
+    setIsGenerating(true);
 
     try {
-      const uri = await captureRef(chartRef, {
-        format: 'png',
-        quality: 0.8,
-      });
+      const total = dataEquipos.datasets[0].data.reduce((a, b) => a + b, 0);
+      let acumulado = 0;
       
-      const doc = new jsPDF();
-      doc.text("Reporte de Equipos por Categoría", 10, 10);
+      const pieChartSVG = `
+        <svg width="200" height="200" viewBox="-100 -100 200 200">
+          ${dataEquipos.datasets[0].data.map((value, index) => {
+            const porcentaje = (value / total) * 100;
+            const anguloInicio = (acumulado / total) * 360;
+            const anguloFin = ((acumulado + value) / total) * 360;
+            acumulado += value;
+            
+            const inicioX = Math.cos((anguloInicio - 90) * Math.PI / 180) * 100;
+            const inicioY = Math.sin((anguloInicio - 90) * Math.PI / 180) * 100;
+            const finX = Math.cos((anguloFin - 90) * Math.PI / 180) * 100;
+            const finY = Math.sin((anguloFin - 90) * Math.PI / 180) * 100;
+            
+            const esGranArco = porcentaje > 50 ? 1 : 0;
+            
+            return `
+              <path d="M 0 0 L ${inicioX} ${inicioY} A 100 100 0 ${esGranArco} 1 ${finX} ${finY} Z"
+                    fill="${coloresEtiquetas[dataEquipos.labels[index]]}"
+              />
+            `;
+          }).join('')}
+        </svg>
+      `;
 
-      const chartImage = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+      const htmlContent = `
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              .chart-container { 
+                border: 1px solid #ccc;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 8px;
+                text-align: center;
+              }
+              .legend-item {
+                display: flex;
+                align-items: center;
+                margin: 10px 0;
+                justify-content: center;
+              }
+              .color-box {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Reporte de Equipos por Categoría</h1>
+            <div class="chart-container">
+              ${pieChartSVG}
+              <div class="legend">
+                ${dataEquipos.labels.map((label, index) => `
+                  <div class="legend-item">
+                    <div class="color-box" style="background-color: ${coloresEtiquetas[label]}"></div>
+                    <div>${label}: ${dataEquipos.datasets[0].data[index]} equipos 
+                      (${(dataEquipos.datasets[0].data[index] / total * 100).toFixed(1)}%)
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              <p>Total de equipos: ${total}</p>
+              <p>Fecha de generación: ${new Date().toLocaleDateString()}</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
       });
-      
-      doc.addImage(chartImage, "PNG", 10, 20, 150, 110);
 
-      dataEquipos.labels.forEach((label, index) => {
-        const value = dataEquipos.datasets[0].data[index];
-        doc.text(`${label}: ${value} equipos`, 10, 140 + index * 10);
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Compartir reporte de equipos'
       });
-
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
-      const fileUri = `${FileSystem.documentDirectory}reporte_equipos.pdf`;
-
-      await FileSystem.writeAsStringAsync(fileUri, pdfBase64, {
-        encoding: FileSystem.EncodingType.Base64
-      });
-
-      await Sharing.shareAsync(fileUri);
     } catch (error) {
-      console.error("Error al generar o compartir el PDF: ", error);
-      Alert.alert("Error", "No se pudo generar el PDF");
+      console.error('Error:', error);
+      Alert.alert('Error', `No se pudo generar el PDF: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
