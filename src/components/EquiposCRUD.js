@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, Alert, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Image, Alert, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { collection, addDoc } from "firebase/firestore";
 import { db } from '../../connection/firebaseConfig';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Laptop, HardDrive, Activity, Grid, Upload, PlusCircle } from 'lucide-react-native';
+import { Camera, Laptop, HardDrive, Activity, Grid, Upload, PlusCircle, Image as ImageIcon } from 'lucide-react-native';
 
 const EquiposCRUD = () => {
   const [modelo, setModelo] = useState('');
@@ -12,6 +12,7 @@ const EquiposCRUD = () => {
   const [estado, setEstado] = useState('');
   const [imagen, setImagen] = useState('');
   const [categoria, setCategoria] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
 
   const handleSaveEquipo = async () => {
     if (!modelo.trim() || !descripcion.trim() || !numeroSerie.trim() || !estado.trim() || !categoria.trim()) {
@@ -135,30 +136,61 @@ const EquiposCRUD = () => {
       </View>
       
       <View style={styles.imageContainer}>
-        {imagen ? (
-          <Image source={{ uri: imagen }} style={styles.previewImage} />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Upload stroke="#4A5568" size={40} />
-            <Text style={styles.imagePlaceholderText}>Imagen del equipo</Text>
-          </View>
-        )}
-        <View style={styles.imageButtons}>
-          <TouchableOpacity style={styles.button} onPress={() => pickImage(false)}>
-            <Camera stroke="#FFFFFF" size={24} />
-            <Text style={styles.buttonText}>Galería</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={() => pickImage(true)}>
-            <Camera stroke="#FFFFFF" size={24} />
-            <Text style={styles.buttonText}>Cámara</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => setModalVisible(true)}>
+          {imagen ? (
+            <Image source={{ uri: imagen }} style={styles.previewImage} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Upload stroke="#4A5568" size={40} />
+              <Text style={styles.imagePlaceholderText}>Imagen del equipo</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
       
       <TouchableOpacity style={styles.submitButton} onPress={handleSaveEquipo}>
         <PlusCircle stroke="#FFFFFF" size={24} />
         <Text style={styles.submitButtonText}>Agregar Equipo</Text>
       </TouchableOpacity>
+      
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Seleccionar imagen</Text>
+            <TouchableOpacity 
+              style={[styles.modalButton, { backgroundColor: '#2196F3' }]} 
+              onPress={() => {
+                pickImage(false);
+                setModalVisible(false);
+              }}
+            >
+              <ImageIcon stroke="#FFFFFF" size={24} />
+              <Text style={styles.modalButtonText}>Galería</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modalButton, { backgroundColor: '#2196F3' }]} 
+              onPress={() => {
+                pickImage(true);
+                setModalVisible(false);
+              }}
+            >
+              <Camera stroke="#FFFFFF" size={24} />
+              <Text style={styles.modalButtonText}>Cámara</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -214,23 +246,6 @@ const styles = StyleSheet.create({
     color: '#4A5568',
     marginTop: 10,
   },
-  imageButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4299E1',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    marginLeft: 10,
-  },
   submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,12 +254,61 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 10,
     marginTop: 20,
+    marginBottom: 33.4,
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 10,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E53E3E',
+    paddingVertical: 15,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 
